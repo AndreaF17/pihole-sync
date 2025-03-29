@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import paramiko
+import paramiko.client
 import requests
 import hashlib
 import base64
@@ -74,7 +75,9 @@ def main():
     local_file_hash = sha256sum(main_file_path)
     logging.info(f"Local file hash: {local_file_hash}")
     for host in replicas:
-        ssh = paramiko.SSHClient()
+        logging.info(f"Connecting to {host}...")
+        ssh = paramiko.client.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(host, username=ssh_user, key_filename=ssh_key_path)
         logging.info(f"Connected to {host}.")
         # Get remote file hash
