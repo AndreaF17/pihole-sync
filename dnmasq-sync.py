@@ -78,7 +78,8 @@ def main():
         logging.info(f"Connecting to {host}...")
         ssh = paramiko.client.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(host, username=ssh_user, key_filename=ssh_key_path)
+
+        ssh.connect(host, username=ssh_user, pkey=ssh_key_path)
         logging.info(f"Connected to {host}.")
         # Get remote file hash
         stdin, stdout, stderr = ssh.exec_command(f"sha256sum {main_file_path}")
@@ -97,10 +98,13 @@ def main():
             sftp.put(main_file_path, main_file_path)
             sftp.close()
             logging.info(f"File updated on {host}.")
+            logging.info("Reloading DNS...")
+            _stdin, _stdout,_stderr = ssh.exec_command("pihole reloaddns")
+            logging.info("DNS reloaded.")
+            
+
         else:
             logging.info(f"Hashes match for {host}. No update needed.")
-        # Reload DNS
-        reload_dns()
         ssh.close()
         logging.info(f"Disconnected from {host}.")
     logging.info("DNSMasq sync process completed.")
