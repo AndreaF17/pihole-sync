@@ -15,9 +15,7 @@ logging_file_path = os.getenv("LOGGING_FILE_PATH")
 logging_level = os.getenv("LOGGING_LEVEL")
 
 main_file_path = os.getenv("MAIN_FILE_PATH")
-replicas = os.getenv("REPLICAS_IPS")
-print(replicas)
-replicas = replicas.split(",")
+replicas = os.getenv("REPLICAS_IPS").split(",")
 
 ssh_user = os.getenv("SSH_USER")
 ssh_key_path = os.getenv("SSH_KEY_PATH")
