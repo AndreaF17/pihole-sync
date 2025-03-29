@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import paramiko
 import requests
 import hashlib
 import base64
@@ -8,13 +9,16 @@ import logging
 
 # Load environment variables from the .env file
 load_dotenv()
-token = os.getenv("GITHUB_TOKEN")
-repo = os.getenv("GITHUB_REPO")
-branch = os.getenv("GITHUB_BRANCH")
-repo_folder_path = os.getenv("GITHUB_FOLDER_PATH")
-local_folder_path = os.getenv("LOCAL_FOLDER_PATH")
+# Set up logging
 logging_file_path = os.getenv("LOGGING_FILE_PATH")
 logging_level = os.getenv("LOGGING_LEVEL")
+
+main_file_path = os.getenv("MAIN_FILE_PATH")
+replicas = os.getenv("REPLICAS_IPS").split(',')
+ssh_user = os.getenv("SSH_USER")
+ssh_key_path = os.getenv("SSH_KEY_PATH")
+
+
 
 # Configure logging
 logging.basicConfig(filename=logging_file_path, level=logging_level, 
@@ -41,38 +45,43 @@ def update_local_file(content, local_file_path):
         logging.info(f"File {local_file_path} updated successfully.")
 
 def main():
-    url = f"https://api.github.com/repos/{repo}/contents/{repo_folder_path}?ref={branch}"
-    response = requests.get(url, headers={"Authorization": f"token {token}"})
-    files = response.json()
-    remote_files = {file['name'] for file in files if file['name'].endswith('.conf')}
-    local_files = {file for file in os.listdir(local_folder_path) if file.endswith('.conf')}
-
-    # Delete local files that are not in the remote repository
-    for local_file in local_files - remote_files:
-        local_file_path = os.path.join(local_folder_path, local_file)
-        logging.info(f"Deleting local file {local_file_path} as it is not present in the remote repository.")
-        os.remove(local_file_path)
+    logging.info("Starting DNSMasq sync process...")
+    # Get local file hash
+    local_file_hash = sha256sum(main_file_path)
+    logging.info(f"Local file hash: {local_file_hash}")
+    for host in replicas:
+        ssh = paramiko.SSHClient()
+        ssh.connect(host, username=ssh_user, key_filename=ssh_key_path)
+        logging.info(f"Connected to {host}.")
+        # Get remote file hash
+        stdin, stdout, stderr = ssh.exec_command(f"sha256sum {main_file_path}")
+        remote_file_hash = stdout.read().decode().split()[0]
+        logging.info(f"Remote file hash for {host}: {remote_file_hash}")
+        # Compare hashes
+        if local_file_hash != remote_file_hash:
+            logging.info(f"Hashes do not match for {host}. Updating file...")
+            # Get the file content
+            with open(main_file_path, 'r') as file:
+                content = file.read()
+            # Update the local file
+            update_local_file(content, main_file_path)
+            # Upload the file to the remote server
+            sftp = ssh.open_sftp()
+            sftp.put(main_file_path, main_file_path)
+            sftp.close()
+            logging.info(f"File updated on {host}.")
+        else:
+            logging.info(f"Hashes match for {host}. No update needed.")
+        # Reload DNS
         reload_dns()
+        ssh.close()
+        logging.info(f"Disconnected from {host}.")
+    logging.info("DNSMasq sync process completed.")
+        
 
-    # Update or add files from the remote repository
-    for file in files:
-        if file['name'].endswith('.conf'):
-            file_name = file['name']
-            local_file_path = os.path.join(local_folder_path, file_name)
-            content = requests.get(file['download_url']).text
-            if os.path.exists(local_file_path):
-                logging.info(f"File {local_file_path} exists.")
-                local_file_sha256 = sha256sum(local_file_path)
-                if hashlib.sha256(content.encode("utf-8")).hexdigest() != local_file_sha256:
-                    logging.info(f"File {local_file_path} has been modified.")
-                    update_local_file(content, local_file_path)
-                    reload_dns()
-                else:
-                    logging.info(f"File {local_file_path} has not been modified.")
-            else:
-                logging.info(f"File {local_file_path} does not exist.")
-                update_local_file(content, local_file_path)
-                reload_dns()
+    
+    
+
 
 if __name__ == "__main__":
     main()
