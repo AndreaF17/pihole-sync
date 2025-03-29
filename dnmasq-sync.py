@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import paramiko
 import paramiko.client
+import paramiko.ed25519key
 import requests
 import hashlib
 import base64
@@ -78,8 +79,8 @@ def main():
         logging.info(f"Connecting to {host}...")
         ssh = paramiko.client.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-
-        ssh.connect(host, username=ssh_user, pkey=ssh_key_path)
+        private_key = paramiko.Ed25519Key(filename=ssh_key_path)
+        ssh.connect(host, username=ssh_user, pkey=private_key)
         logging.info(f"Connected to {host}.")
         # Get remote file hash
         stdin, stdout, stderr = ssh.exec_command(f"sha256sum {main_file_path}")
