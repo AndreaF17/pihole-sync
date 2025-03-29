@@ -14,10 +14,34 @@ logging_file_path = os.getenv("LOGGING_FILE_PATH")
 logging_level = os.getenv("LOGGING_LEVEL")
 
 main_file_path = os.getenv("MAIN_FILE_PATH")
-replicas = os.getenv("REPLICAS_IPS").split(',')
+replicas = os.getenv("REPLICAS_IPS", "").split(',')
+
 ssh_user = os.getenv("SSH_USER")
 ssh_key_path = os.getenv("SSH_KEY_PATH")
 
+# Validate environment variables
+if not logging_file_path:
+    logging.error("LOGGING_FILE_PATH environment variable is not set or empty.")
+    exit(1)
+
+if not logging_level:
+    logging.error("LOGGING_LEVEL environment variable is not set or empty.")
+    exit(1)
+
+if not main_file_path:
+    logging.error("MAIN_FILE_PATH environment variable is not set or empty.")
+    exit(1)
+
+if not ssh_user:
+    logging.error("SSH_USER environment variable is not set or empty.")
+    exit(1)
+
+if not ssh_key_path:
+    logging.error("SSH_KEY_PATH environment variable is not set or empty.")
+    exit(1)
+if not replicas:
+    logging.error("REPLICAS_IPS environment variable is not set or empty.")
+    exit(1)
 
 
 # Configure logging
