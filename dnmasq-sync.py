@@ -15,7 +15,7 @@ logging_file_path = os.getenv("LOGGING_FILE_PATH")
 logging_level = os.getenv("LOGGING_LEVEL")
 
 main_file_path = os.getenv("MAIN_FILE_PATH")
-replicas = os.getenv("REPLICAS_IPS", "").split(',')
+replicas = os.getenv("REPLICAS_IPS")
 
 ssh_user = os.getenv("SSH_USER")
 ssh_key_path = os.getenv("SSH_KEY_PATH")
@@ -101,7 +101,7 @@ def main():
             logging.info("Reloading DNS...")
             _stdin, _stdout,_stderr = ssh.exec_command("pihole reloaddns")
             logging.info("DNS reloaded.")
-            
+
 
         else:
             logging.info(f"Hashes match for {host}. No update needed.")
